@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Audio Noise Reduction</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        text-align: center;
+      }
+      button {
+        margin: 10px;
+        padding: 10px 20px;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Audio Noise Reduction</h1>
+    <p>Upload an audio file and remove background noise</p>
+    <input type="file" id="audioFile" accept="audio/*" />
+    <button id="processAudio">Process Audio</button>
+    <audio id="originalAudio" controls></audio>
+    <audio id="processedAudio" controls></audio>
+
+    <script>
+      const audioFileInput = document.getElementById("audioFile");
+      const originalAudio = document.getElementById("originalAudio");
+      const processedAudio = document.getElementById("processedAudio");
+      const processButton = document.getElementById("processAudio");
+
+      let audioContext, sourceNode, analyser, processorNode;
+
+      audioFileInput.addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          const fileURL = URL.createObjectURL(file);
+          originalAudio.src = fileURL;
+        }
+      });
+
+      processButton.addEventListener("click", async () => {
+        const file = audioFileInput.files[0];
+        if (!file) {
+          alert("Please upload an audio file first!");
+          return;
+        }
+
+        const arrayBuffer = await file.arrayBuffer();
+        audioContext = new AudioContext();
+
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        sourceNode = audioContext.createBufferSource();
+        sourceNode.buffer = audioBuffer;
+
+        // AnalyserNode for visualization or frequency analysis
+        analyser = audioContext.createAnalyser();
+
+        // BiquadFilterNode for noise reduction
+        const filter = audioContext.createBiquadFilter();
+        filter.type = "highpass"; // Change to 'lowpass' or 'notch' as needed
+        filter.frequency.setValueAtTime(500, audioContext.currentTime); // Adjust frequency
+
+        // ScriptProcessorNode for custom processing
+        processorNode = audioContext.createScriptProcessor(4096, 1, 1);
+        processorNode.onaudioprocess = (event) => {
+          const inputBuffer = event.inputBuffer;
+          const outputBuffer = event.outputBuffer;
+
+          // Example: Simply copying data from input to output (no processing yet)
+          for (
+            let channel = 0;
+            channel < inputBuffer.numberOfChannels;
+            channel++
+          ) {
+            const inputData = inputBuffer.getChannelData(channel);
+            const outputData = outputBuffer.getChannelData(channel);
+            for (let sample = 0; sample < inputBuffer.length; sample++) {
+              outputData[sample] = inputData[sample]; // Placeholder for noise reduction logic
+            }
+          }
+        };
+
+        // Connect nodes: Source -> Filter -> Processor -> Destination
+        sourceNode.connect(filter);
+        filter.connect(processorNode);
+        processorNode.connect(audioContext.destination);
+
+        sourceNode.start(0);
+
+        // Note: Processed audio output is being played back live
+        // For saving or visualizing, additional steps are needed
+      });
+    </script>
+  </body>
+</html>
